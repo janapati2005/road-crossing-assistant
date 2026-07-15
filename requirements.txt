@@ -1,0 +1,9 @@
+ultralytics
+groq
+opencv-python
+pyttsx3
+SpeechRecognition
+pyaudio
+gtts
+playsound
+numpy

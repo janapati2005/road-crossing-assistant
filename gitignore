@@ -1,0 +1,31 @@
+# Model weights (too large for GitHub)
+*.pt
+*.pth
+
+# Audio temp files
+*.mp3
+temp_audio.mp3
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+venv/
+env/
+
+# API keys - never commit these
+*apikey*
+*api_key*
+*.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Video files
+*.mp4
+*.avi
+*.mov
