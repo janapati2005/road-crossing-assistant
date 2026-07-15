@@ -1,211 +1,146 @@
-# 🚦 Visually Impaired Road Crossing Assistant
+# Visually Impaired Road Crossing Assistant
 
-> ⚠️ **Work in Progress** — Core pipeline functional. Custom YOLOv8 training on IDD dataset ongoing (v4a of 5 rounds complete). This README will be updated as the project progresses.
-
-An AI-powered real-time assistant that helps visually impaired individuals safely cross roads in Indian traffic conditions. It detects vehicles and traffic signals using a custom fine-tuned deep learning model, understands the scene using a large language model, and communicates safety instructions via voice in multiple Indian languages.
+> **Work in Progress** — The core pipeline is functional. Custom YOLOv8 model training on the India Driving Dataset is ongoing (4 of 7 rounds complete). This page will be updated as training finishes.
 
 ---
 
-## 🧠 How It Works
+## What This Project Does
 
-```
-Camera / Video Feed
-        ↓
-YOLOv8n — fine-tuned on IDD (Object Detection)
-        ↓
-Scene Description Builder
-        ↓
-Groq API — LLaMA 3.3 70B (Scene Understanding + Safety Decision)
-        ↓
-pyttsx3 / gTTS (Voice Output in selected language)
-        ↑
-SpeechRecognition (Voice Input — en-IN / hi-IN / te-IN)
-```
+Crossing a road in an Indian city is chaotic even for someone with full vision. For a visually impaired person, it's genuinely dangerous — mixed traffic, no lane discipline, signals that get ignored. This project is an attempt to build an assistant that can help with exactly that.
 
-1. Camera captures real-time road footage
-2. YOLOv8n (fine-tuned on India Driving Dataset) detects vehicles, pedestrians, and traffic signals
-3. Detected objects are converted into a structured scene description
-4. LLaMA 3.3 70B via Groq interprets the scene and decides if it is safe to cross
-5. Safety instruction is spoken aloud to the user in their chosen language
+The system watches the road through a camera, detects what's around (vehicles, traffic lights, pedestrians), and tells the user whether it's safe to cross — out loud, in their language. They can also ask questions like "is anything coming from the left?" and get a spoken response.
 
 ---
 
-## 🔍 Models & Tech Used
+## How It Works
 
-| Component | Technology |
-|---|---|
-| Object Detection | YOLOv8n — custom fine-tuned on IDD |
-| LLM | LLaMA 3.3 70B via Groq API |
-| TTS — English | pyttsx3 (offline, Windows SAPI5) |
-| TTS — Hindi / Telugu | gTTS (Google Text-to-Speech) |
-| Speech Input | SpeechRecognition + Google Speech API |
-| Vision | OpenCV |
-| Language | Python 3.10+ |
+The pipeline has four stages:
+
+**1. Detection** — A YOLOv8n model (fine-tuned on Indian road footage) processes each camera frame and identifies vehicles, traffic lights, and pedestrians in real time.
+
+**2. Scene Building** — Detections are converted into a plain English description of the current road situation, for example: *"Traffic light is red. 3 vehicles detected: Car, Two Wheeler, Large Vehicle."*
+
+**3. Understanding** — That scene description is sent to LLaMA 3.3 70B (via Groq API), which interprets it and generates a natural, context-aware safety response.
+
+**4. Voice Output** — The response is spoken aloud using pyttsx3 (English) or gTTS (Hindi/Telugu). The user can ask follow-up questions via microphone at any time.
+
+The camera runs on a background thread so detection is continuous, while the main thread handles the voice conversation. A threading lock keeps the shared scene state safe between the two.
 
 ---
 
-## 🚗 Why Custom YOLOv8n on IDD?
+## Why a Custom Model?
 
-Standard YOLOv8 is trained on COCO (Western datasets). It struggles with:
-- Auto-rickshaws, two-wheelers, mixed traffic
-- Irregular lane behaviour on Indian roads
-- Indian traffic signal styles and layouts
+Standard YOLOv8 is trained on COCO — a dataset built mostly from Western roads. It doesn't handle auto-rickshaws, heavily loaded two-wheelers, or the general unpredictability of Indian traffic particularly well.
 
-We fine-tune YOLOv8n on the **India Driving Dataset (IDD)** to handle these conditions accurately.
-
-### IDD Training Progress
+The fix is to fine-tune on the **India Driving Dataset (IDD)**, which was collected specifically from Indian roads across multiple cities. Training is progressive — starting with a small subset and scaling up — so we can evaluate improvement at each stage before committing to the next round on Colab.
 
 | Round | Images | Status |
 |---|---|---|
-| v1 | 1,000 | ✅ Done |
-| v2 | 5,000 | ✅ Done |
-| v3 | 10,000 | ✅ Done |
-| v4a | 15,000 | ✅ Done — currently in use (`best_v4a.pt`) |
-| v4b | 20,000 | 🔄 Pending |
-| v5a | 25,000 | 🔄 Pending |
-| v5b (final) | 30,000 | 🔄 Pending |
-
-Training platform: Google Colab
-Dataset: IDD (India Driving Dataset), Pascal VOC XML → converted to YOLO TXT format
+| v1 | 1,000 | Done |
+| v2 | 5,000 | Done |
+| v3 | 10,000 | Done |
+| v4a | 15,000 | Done — active model |
+| v4b | 20,000 | Pending |
+| v5a | 25,000 | Pending |
+| v5b | 30,000 | Pending |
 
 ---
 
-## 🌐 Multilingual Support
+## Tech Stack
 
-| Language | Voice Input | Voice Output |
-|---|---|---|
-| English | en-IN | pyttsx3 (offline) |
-| Hindi | hi-IN | gTTS |
-| Telugu | te-IN | gTTS |
-
-On startup the user says ONE / TWO / THREE to select their language.
-
----
-
-## 🏗️ Key Design Decisions
-
-**Threaded architecture**
-- Camera runs in a background thread continuously updating `current_scene`
-- Main thread handles voice conversation sequentially
-- `threading.Lock()` used for safe shared state access
-
-**pyttsx3 Windows fix**
-- A fresh pyttsx3 engine instance is created on every `speak()` call
-- Reusing the same instance causes silent failures on Windows
-
-**Traffic light color detection**
-- HSV color analysis on the detected bounding box region
-- Box split into top / middle / bottom thirds
-- Red checked in top, yellow in middle, green in bottom
+- **YOLOv8n** (Ultralytics) — object detection
+- **LLaMA 3.3 70B** via Groq API — scene understanding and response generation
+- **OpenCV** — frame capture and bounding box rendering
+- **pyttsx3** — offline English TTS (Windows SAPI5)
+- **gTTS + playsound** — online TTS for Hindi and Telugu
+- **SpeechRecognition** — microphone input via Google Speech API
 
 ---
 
-## ⚙️ Setup
+## Languages Supported
 
-### 1. Clone the repository
+English (en-IN), Hindi (hi-IN), and Telugu (te-IN). On startup, the user says ONE, TWO, or THREE to pick their language. Everything after that — prompts, responses, confirmations — comes in that language.
+
+---
+
+## Getting Started
+
+**Clone the repo**
 ```bash
 git clone https://github.com/janapati2005/road-crossing-assistant.git
 cd road-crossing-assistant
 ```
 
-### 2. Install dependencies
+**Install dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Set Groq API Key (Windows)
+**Set your Groq API key** (get one free at console.groq.com)
 ```bash
+# Windows
 setx GROQ_API_KEY "your_key_here"
 ```
-Then close and reopen your terminal. Get a free key at [console.groq.com](https://console.groq.com).
+Close and reopen your terminal after running this.
 
-### 4. Add your video or webcam
-In `assistant2.py` line 171, change the video path:
+**Set your video source** — open `assistant2.py` and update line 171:
 ```python
-# For a video file:
-cap = cv2.VideoCapture(r"path\to\your\traffic_video.mp4")
+# Use a video file for testing:
+cap = cv2.VideoCapture(r"path\to\traffic_video.mp4")
 
-# For live webcam:
+# Or switch to live webcam:
 cap = cv2.VideoCapture(0)
 ```
 
-### 5. Add your YOLOv8 weights
-Place `best_v4a.pt` in the project root. Download link: *(will be added after training completes)*
+**Add model weights** — place `best_v4a.pt` in the project root. *(Download link will be added once training is complete.)*
 
-### 6. Run
+**Run**
 ```bash
 python assistant2.py
 ```
 
 ---
 
-## 📦 requirements.txt
-
-```
-ultralytics
-groq
-opencv-python
-pyttsx3
-SpeechRecognition
-pyaudio
-gtts
-playsound
-numpy
-```
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 road-crossing-assistant/
-├── assistant2.py          # Main application (current version)
+├── assistant2.py        # Main application
 ├── requirements.txt
 ├── README.md
-├── .gitignore
 ├── tests/
-│   ├── test_groq.py       # Test Groq API connection
-│   ├── test_mic.py        # Test microphone input
-│   ├── test_mic2.py       # Test microphone with custom thresholds
-│   └── test_speak.py      # Test pyttsx3 voice output
+│   ├── test_groq.py     # Verify Groq API connection
+│   ├── test_mic.py      # Basic microphone test
+│   ├── test_mic2.py     # Mic test with custom sensitivity
+│   └── test_speak.py    # Voice output test
 └── archive/
-    └── assistant_v1.py    # Earlier single-threaded version
+    └── assistant_v1.py  # Earlier single-threaded version
 ```
 
----
-
-## 🧪 Testing Individual Components
-
-```bash
-# Test if Groq API key is working
-python tests/test_groq.py
-
-# Test microphone
-python tests/test_mic.py
-
-# Test voice output
-python tests/test_speak.py
-```
+If you want to test individual components before running the full system, start with `tests/test_groq.py` to confirm your API key works, then `tests/test_speak.py` for audio, then `tests/test_mic.py` for microphone input.
 
 ---
 
-## 🎯 Use Case
+## Known Issues
 
-Designed specifically for **visually impaired users navigating Indian urban roads** — where standard Western AI models fall short due to differences in traffic density, vehicle types, and road behaviour.
+**pyttsx3 silent failure on Windows** — reusing the same engine instance across multiple calls causes it to stop speaking without throwing any error. The fix is to initialize a fresh engine on every call, which is what the current code does.
 
----
-
-## 🔮 Planned Updates
-
-- Complete IDD training rounds v4b → v5b (final model)
-- Switch from video file to live webcam as default
-- Add distance estimation for detected vehicles
-- Package as a standalone portable application
+**Traffic light color detection** — works reasonably well in good lighting but can be unreliable at night or with non-standard signal placements. This will improve as the custom model training progresses.
 
 ---
 
-## 👤 Author
+## What's Next
 
-**Janapati Hari Aditya**
-B.Tech CSE, Amrita Vishwa Vidyapeetham, Amaravati
-[GitHub](https://github.com/janapati2005)
+- Finish training rounds v4b through v5b and swap in the final model
+- Move from video file input to live webcam as the default
+- Add rough distance estimation for detected vehicles
+- Field test with actual visually impaired users and incorporate feedback
+
+---
+
+## Author
+
+Janapati Hari Aditya  
+B.Tech Computer Science and Engineering  
+Amrita Vishwa Vidyapeetham, Amaravati  
+[github.com/janapati2005](https://github.com/janapati2005)
